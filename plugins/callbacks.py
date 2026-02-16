@@ -2,7 +2,7 @@ from pyrogram import Client, filters, enums
 from pyrogram.types import CallbackQuery, InlineKeyboardMarkup, InlineKeyboardButton
 from database.db import db
 from config import SUPPORT_CONTACT
-from plugins.start import small_caps, get_random_image  # ✅ FIXED
+from plugins.start import small_caps, get_random_image, start_command
 import datetime
 
 @Client.on_callback_query()
@@ -31,51 +31,7 @@ async def handle_callbacks(client: Client, callback_query: CallbackQuery):
         )
         await callback_query.answer()
     
-    elif data == "show_tutorial":
-        tutorial = await db.get_tutorial()
-        
-        text = f"""
-{small_caps('📚 Tutorial')}
-
-{small_caps('Watch the video below to learn how to use this bot')}:
-
-{tutorial if tutorial else 'No tutorial set'}
-"""
-        await message.edit_caption(
-            caption=text,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(small_caps("⬅️ Back"), callback_data="back_to_start")]
-            ]),
-            parse_mode=enums.ParseMode.HTML
-        )
-        await callback_query.answer()
-    
-    elif data == "my_profile":
-        user = await db.get_user(user_id)
-        is_premium = await db.check_premium(user_id)
-        
-        premium_status = small_caps("✅ Active") if is_premium else small_caps("❌ Not Active")
-        joined = user.get('joined_date', 'Unknown')
-        if isinstance(joined, datetime.datetime):
-            joined = joined.strftime('%Y-%m-%d')
-        
-        text = f"""
-{small_caps('👤 Your Profile')}
-
-{small_caps('User ID')}: <code>{user_id}</code>
-{small_caps('Premium')}: {premium_status}
-{small_caps('Joined')}: {joined}
-"""
-        await message.edit_caption(
-            caption=text,
-            reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton(small_caps("⬅️ Back"), callback_data="back_to_start")]
-            ]),
-            parse_mode=enums.ParseMode.HTML
-        )
-        await callback_query.answer()
-    
     elif data == "back_to_start":
-        from plugins.start import start_command
+        # Re-trigger start command
         await start_command(client, callback_query.message)
         await callback_query.answer()
