@@ -1,10 +1,23 @@
-import random
+import re
+import aiohttp
+import json
 from pyrogram import Client, filters, enums
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 from database.db import db
-from config import OWNER_ID, CHANNEL_URL, SUPPORT_CONTACT
+from config import SUPPORT_CONTACT, CHANNEL_URL
 
-# ==================== PREMIUM IMAGES ====================
+def small_caps(text):
+    normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    small = "ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"
+    result = ""
+    for char in text:
+        if char in normal:
+            idx = normal.index(char)
+            result += small[idx]
+        else:
+            result += char
+    return result
+
 START_IMAGES = [
     "https://i.postimg.cc/Hx1qXv0f/0f22a4ab4d44a829a33797eb7d8fbdc6.jpg",
     "https://i.postimg.cc/j5YpP3Qb/22df44ff326cbce5d99344d904e993af.jpg",
@@ -19,20 +32,45 @@ START_IMAGES = [
     "https://i.postimg.cc/85dqHdtS/f4895703153ffd7f73fa8024eada8287.jpg"
 ]
 
-def get_random_start_image():
+def get_random_image():
+    import random
     return random.choice(START_IMAGES)
 
-def small_caps(text):
-    normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    small = "ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"
-    result = ""
-    for char in text:
-        if char in normal:
-            idx = normal.index(char)
-            result += small[idx]
-        else:
-            result += char
-    return result
+async def create_short_url(destination: str, alias: str = None) -> str:
+    """Create short URL using Arolinks API"""
+    try:
+        api_key = await db.get_shortener_api()
+        api_url = await db.get_shortener_url()
+        
+        if not api_key or not api_url:
+            return None
+        
+        params = {
+            'api': api_key,
+            'url': destination,
+            'format': 'text'
+        }
+        
+        if alias:
+            params['alias'] = alias[:20]
+        
+        async with aiohttp.ClientSession() as session:
+            async with session.get(api_url, params=params, timeout=30) as resp:
+                if resp.status == 200:
+                    text = await resp.text()
+                    # Try JSON first
+                    try:
+                        data = json.loads(text)
+                        if data.get('status') == 'success':
+                            return data.get('shortenedUrl')
+                    except:
+                        # Return plain text URL
+                        if text.startswith('http'):
+                            return text.strip()
+        return None
+    except Exception as e:
+        print(f"Shortener error: {e}")
+        return None
 
 @Client.on_message(filters.command("start"))
 async def start_command(client: Client, message: Message):
@@ -40,21 +78,20 @@ async def start_command(client: Client, message: Message):
     username = message.from_user.username
     first_name = message.from_user.first_name
     
-    # Add user to database
     await db.add_user(user_id, username, first_name)
     
-    # Check if it's a deep link (file access)
+    # Check if it's a deep link (hash access)
     if len(message.command) > 1:
-        file_id = message.command[1]
-        await handle_file_access(client, message, file_id)
+        hash_id = message.command[1]
+        await handle_hash_access(client, message, hash_id)
         return
     
     # Normal start message
     welcome_text = f"""
-{small_caps('Hɪ Tʜᴇʀᴇ...')} ⁭⁬⁭- ⁭⁬⁭⁬⁭⁬⁭⁬⁭⁬⁭⁬⁭⁬⁭⁬⁭ {message.from_user.mention} !!! 💥
+{small_caps('Hɪ Tʜᴇʀᴇ...')} {message.from_user.mention} !!! 💥
 
-{small_caps('I ᴀᴍ ᴀ ᴘʀᴇᴍɪᴜᴍ ғɪʟᴇ sᴛᴏʀᴇ ʙᴏᴛ')}.
-{small_caps('I ᴄᴀɴ ɢᴇɴᴇʀᴀᴛᴇ ʟɪɴᴋs ᴅɪʀᴇᴄᴛʟʏ ᴡɪᴛʜ ɴᴏ ᴘʀᴏʙʟᴇᴍs')}
+{small_caps('I ᴀᴍ ᴀ ʟɪɴᴋ sᴛᴏʀᴇ ʙᴏᴛ')}
+{small_caps('Sᴇɴᴅ ᴍᴇ ᴀɴʏ ᴛᴇʟᴇɢʀᴀᴍ ʟɪɴᴋ ᴀɴᴅ ɪ ᴡɪʟʟ ᴄʀᴇᴀᴛᴇ ᴀ sʜᴏʀᴛ ʟɪɴᴋ')}
 
 {small_caps('Pᴏᴡᴇʀᴇᴅ Bʏ')}: @Nightfall_Hub
 """
@@ -62,69 +99,32 @@ async def start_command(client: Client, message: Message):
     buttons = InlineKeyboardMarkup([
         [
             InlineKeyboardButton(small_caps("📢 Channel"), url=CHANNEL_URL),
-            InlineKeyboardButton(small_caps("💎 Premium"), callback_data="premium_info")
-        ],
-        [
-            InlineKeyboardButton(small_caps("📚 Tutorial"), callback_data="show_tutorial"),
-            InlineKeyboardButton(small_caps("👤 My Profile"), callback_data="my_profile")
+            InlineKeyboardButton(small_caps("💎 Premium"), url=f"https://t.me/{SUPPORT_CONTACT[1:]}")
         ]
     ])
     
     await client.send_photo(
         chat_id=message.chat.id,
-        photo=get_random_start_image(),
+        photo=get_random_image(),
         caption=welcome_text,
         reply_markup=buttons,
         parse_mode=enums.ParseMode.HTML
     )
 
-async def handle_file_access(client: Client, message: Message, file_id: str):
-    """Handle file access via deep link"""
-    user_id = message.from_user.id
+async def handle_hash_access(client: Client, message: Message, hash_id: str):
+    """Handle access via hash (user clicked short link)"""
+    # Get original URL from database
+    original_url = await db.get_original_url(hash_id)
     
-    # Get file from database
-    file_data = await db.get_file(file_id)
-    if not file_data:
+    if not original_url:
         await message.reply_text(
-            f"{small_caps('❌ Invalid or expired link')}",
+            f"{small_cps('❌ Invalid or expired link')}",
             parse_mode=enums.ParseMode.HTML
         )
         return
     
-    # Increment access count
-    await db.increment_access(file_id)
-    
-    # Check if short URL exists
-    short_url = await db.get_short_url(file_id)
-    
-    if not short_url:
-        # No short URL yet - generate one
-        await message.reply_text(
-            f"{small_caps('⏳ Generating your link...')}",
-            parse_mode=enums.ParseMode.HTML
-        )
-        # This will be handled by callback
-        return
-    
-    # Show short URL with buttons
-    buttons = InlineKeyboardMarkup([
-        [InlineKeyboardButton(small_caps("🔗 Click Here to Download"), url=short_url)],
-        [
-            InlineKeyboardButton(small_caps("💎 Premium"), callback_data="premium_info"),
-            InlineKeyboardButton(small_caps("📚 Tutorial"), callback_data="show_tutorial")
-        ]
-    ])
-    
-    text = f"""
-{small_caps('ʏᴏᴜʀ ʟɪɴᴋ ɪs ʀᴇᴀᴅʏ')}!👇
-
-{small_caps('ᴛᴏ ʙᴜʏ ᴘʀᴇᴍɪᴜᴍ, ᴄᴏɴᴛᴀᴄᴛ')}: {SUPPORT_CONTACT}
-"""
-    
-    await client.send_photo(
-        chat_id=message.chat.id,
-        photo=get_random_start_image(),
-        caption=text,
-        reply_markup=buttons,
+    # Send the original link to user
+    await message.reply_text(
+        f"{small_cps('ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ')}:\n\n{original_url}",
         parse_mode=enums.ParseMode.HTML
     )
