@@ -11,7 +11,7 @@ async def admin_panel(client: Client, message: Message):
     # Check if admin (only owner for now)
     if user_id != OWNER_ID:
         await message.reply_text(
-            f"{small_cps('❌ Admin only command')}",
+            f"{small_caps('❌ Admin only command')}",
             parse_mode=enums.ParseMode.HTML
         )
         return
@@ -23,24 +23,24 @@ async def admin_panel(client: Client, message: Message):
     shortener_url = await db.get_shortener_url()
     
     text = f"""
-{small_cps('👑 Admin Dashboard')}
+{small_caps('👑 Admin Dashboard')}
 
-{small_cps('📊 Statistics')}:
-• {small_cps('Total Links')}: <code>{total_links}</code>
+{small_caps('📊 Statistics')}:
+• {small_caps('Total Links')}: <code>{total_links}</code>
 
-{small_cps('⚙️ Shortener Settings')}:
-• {small_cps('API Key')}: <code>{'✅ Set' if shortener_api else '❌ Not Set'}</code>
-• {small_cps('API URL')}: <code>{'✅ Set' if shortener_url else '❌ Not Set'}</code>
+{small_caps('⚙️ Shortener Settings')}:
+• {small_caps('API Key')}: <code>{'✅ Set' if shortener_api else '❌ Not Set'}</code>
+• {small_caps('API URL')}: <code>{'✅ Set' if shortener_url else '❌ Not Set'}</code>
 
-{small_cps('🆔 Your ID')}: <code>{user_id}</code>
+{small_caps('🆔 Your ID')}: <code>{user_id}</code>
 """
     
     buttons = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton(small_cps("🔗 Set Shortener"), callback_data="set_shortener"),
-            InlineKeyboardButton(small_cps("📊 View Links"), callback_data="view_links")
+            InlineKeyboardButton(small_caps("🔗 Set Shortener"), callback_data="set_shortener"),
+            InlineKeyboardButton(small_caps("📊 View Links"), callback_data="view_links")
         ],
-        [InlineKeyboardButton(small_cps("❌ Close"), callback_data="close")]
+        [InlineKeyboardButton(small_caps("❌ Close"), callback_data="close")]
     ])
     
     await client.send_photo(
@@ -58,7 +58,7 @@ async def admin_callbacks(client: Client, callback_query: CallbackQuery):
     message = callback_query.message
     
     if user_id != OWNER_ID:
-        await callback_query.answer(small_cps("❌ Unauthorized"), show_alert=True)
+        await callback_query.answer(small_caps("❌ Unauthorized"), show_alert=True)
         return
     
     if data == "close":
@@ -67,8 +67,8 @@ async def admin_callbacks(client: Client, callback_query: CallbackQuery):
     
     elif data == "set_shortener":
         await callback_query.message.reply_text(
-            f"{small_cps('🔗 Set Shortener API')}\n\n"
-            f"{small_cps('Send API Key and URL in format')}:\n"
+            f"{small_caps('🔗 Set Shortener API')}\n\n"
+            f"{small_caps('Send API Key and URL in format')}:\n"
             f"<code>api_key|https://apiurl.com</code>",
             parse_mode=enums.ParseMode.HTML
         )
@@ -77,10 +77,10 @@ async def admin_callbacks(client: Client, callback_query: CallbackQuery):
     elif data == "view_links":
         links = await db.get_all_links()
         if not links:
-            await callback_query.answer(small_cps("📭 No links found"), show_alert=True)
+            await callback_query.answer(small_caps("📭 No links found"), show_alert=True)
             return
         
-        text = f"{small_cps('📊 Stored Links')}:\n\n"
+        text = f"{small_caps('📊 Stored Links')}:\n\n"
         for link in links[-10:]:  # Last 10 links
             text += f"• <code>{link['hash_id']}</code>: {link['original_url'][:50]}...\n"
         
@@ -109,6 +109,6 @@ async def handle_admin_input(client: Client, message: Message):
             await db.set_shortener_url(api_url)
             
             await message.reply_text(
-                f"{small_cps('✅ Shortener settings updated')}",
+                f"{small_caps('✅ Shortener settings updated')}",
                 parse_mode=enums.ParseMode.HTML
             )
