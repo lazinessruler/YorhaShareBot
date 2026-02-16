@@ -1,55 +1,33 @@
 #!/usr/bin/env python3
-# File Store Bot
+# Link Store Bot
 # Developed by: Flexyy 🔥
-# Telegram: @xFlexyy | @DragonByte_Network
+# Telegram: @xFlexyy
 
 import os
-import asyncio
 import logging
-from pyrogram import Client, filters
-from pyrogram.types import Message
-from config import API_ID, API_HASH, BOT_TOKEN, OWNER_ID
-from database.db import db
+from pyrogram import Client
+from config import API_ID, API_HASH, BOT_TOKEN
 
-# Enable logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create plugins list
-plugins = dict(
-    root="plugins"
-)
+plugins = dict(root="plugins")
 
 class Bot(Client):
     def __init__(self):
         super().__init__(
-            name="file_store_bot",
+            name="link_store_bot",
             api_id=API_ID,
             api_hash=API_HASH,
             bot_token=BOT_TOKEN,
             plugins=plugins,
-            workers=50,
-            sleep_threshold=10
+            workers=50
         )
     
     async def start(self):
         await super().start()
         me = await self.get_me()
         logger.info(f"✅ Bot started: @{me.username}")
-        
-        try:
-            # Initialize database
-            await db.add_user(me.id, me.username, me.first_name)
-            
-            # Add owner as admin
-            await db.add_admin(OWNER_ID)
-            
-            logger.info(f"👑 Owner ID: {OWNER_ID}")
-        except Exception as e:
-            logger.error(f"Database error: {e}")
     
     async def stop(self):
         await super().stop()
