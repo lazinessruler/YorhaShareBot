@@ -1,23 +1,12 @@
-import re
+import random
 import aiohttp
 import json
 from pyrogram import Client, filters, enums
-from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton
 from database.db import db
 from config import SUPPORT_CONTACT, CHANNEL_URL
 
-def small_caps(text):
-    normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-    small = "ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ"
-    result = ""
-    for char in text:
-        if char in normal:
-            idx = normal.index(char)
-            result += small[idx]
-        else:
-            result += char
-    return result
-
+# ==================== PREMIUM IMAGES ====================
 START_IMAGES = [
     "https://i.postimg.cc/Hx1qXv0f/0f22a4ab4d44a829a33797eb7d8fbdc6.jpg",
     "https://i.postimg.cc/j5YpP3Qb/22df44ff326cbce5d99344d904e993af.jpg",
@@ -32,8 +21,22 @@ START_IMAGES = [
     "https://i.postimg.cc/85dqHdtS/f4895703153ffd7f73fa8024eada8287.jpg"
 ]
 
+# ==================== SMALL CAPS FUNCTION ====================
+def small_caps(text: str) -> str:
+    """Convert text to small caps"""
+    normal = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    small = "ᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢᴀʙᴄᴅᴇғɢʜɪᴊᴋʟᴍɴᴏᴘǫʀsᴛᴜᴠᴡxʏᴢ𝟶𝟷𝟸𝟹𝟺𝟻𝟼𝟽𝟾𝟿"
+    result = ""
+    for char in text:
+        if char in normal:
+            idx = normal.index(char)
+            result += small[idx]
+        else:
+            result += char
+    return result
+
 def get_random_image():
-    import random
+    """Return random image from START_IMAGES list"""
     return random.choice(START_IMAGES)
 
 async def create_short_url(destination: str, alias: str = None) -> str:
@@ -42,7 +45,16 @@ async def create_short_url(destination: str, alias: str = None) -> str:
         api_key = await db.get_shortener_api()
         api_url = await db.get_shortener_url()
         
+        # If not set in DB, use config defaults
+        if not api_key:
+            from config import SHORTENER_API
+            api_key = SHORTENER_API
+        if not api_url:
+            from config import SHORTENER_URL
+            api_url = SHORTENER_URL
+        
         if not api_key or not api_url:
+            print("Shortener API not configured")
             return None
         
         params = {
@@ -118,13 +130,13 @@ async def handle_hash_access(client: Client, message: Message, hash_id: str):
     
     if not original_url:
         await message.reply_text(
-            f"{small_cps('❌ Invalid or expired link')}",
+            f"{small_caps('❌ Invalid or expired link')}",
             parse_mode=enums.ParseMode.HTML
         )
         return
     
     # Send the original link to user
     await message.reply_text(
-        f"{small_cps('ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ')}:\n\n{original_url}",
+        f"{small_caps('ʜᴇʀᴇ ɪs ʏᴏᴜʀ ʟɪɴᴋ')}:\n\n{original_url}",
         parse_mode=enums.ParseMode.HTML
     )
