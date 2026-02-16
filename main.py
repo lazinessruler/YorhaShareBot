@@ -8,7 +8,7 @@ import asyncio
 import logging
 from pyrogram import Client, filters
 from pyrogram.types import Message
-from config import API_ID, API_HASH, BOT_TOKEN
+from config import API_ID, API_HASH, BOT_TOKEN, OWNER_ID
 from database.db import db
 
 # Enable logging
@@ -31,7 +31,8 @@ class Bot(Client):
             api_hash=API_HASH,
             bot_token=BOT_TOKEN,
             plugins=plugins,
-            workers=50
+            workers=50,
+            sleep_threshold=10
         )
     
     async def start(self):
@@ -39,14 +40,16 @@ class Bot(Client):
         me = await self.get_me()
         logger.info(f"✅ Bot started: @{me.username}")
         
-        # Initialize database
-        await db.add_user(me.id, me.username, me.first_name)
-        
-        # Add owner as admin
-        from config import OWNER_ID
-        await db.add_admin(OWNER_ID)
-        
-        logger.info(f"👑 Owner ID: {OWNER_ID}")
+        try:
+            # Initialize database
+            await db.add_user(me.id, me.username, me.first_name)
+            
+            # Add owner as admin
+            await db.add_admin(OWNER_ID)
+            
+            logger.info(f"👑 Owner ID: {OWNER_ID}")
+        except Exception as e:
+            logger.error(f"Database error: {e}")
     
     async def stop(self):
         await super().stop()
