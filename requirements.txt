@@ -1,7 +1,5 @@
-# Fixed versions for compatibility
 pymongo==4.5.0
 motor==3.1.1
 pyrogram==2.0.106
 aiohttp==3.9.5
 pytz==2024.1
-TgCrypto==1.2.5
